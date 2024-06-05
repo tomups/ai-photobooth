@@ -2,7 +2,8 @@ import os
 import sys
 from imaginairy.api.generate import imagine, imagine_image_files
 from imaginairy.schema import ImaginePrompt, ControlInput, LazyLoadingImage, MaskMode
-from imaginairy.enhancers.describe_image_blip import generate_caption
+
+# from imaginairy.enhancers.describe_image_blip import generate_caption
 import random
 import threading
 
@@ -109,7 +110,7 @@ class ImageGenerator:
 
         # caption = generate_caption(image)
 
-        prompt = self.prompts[0]
+        # prompt = self.prompts[0]
 
         print(", ".join([prompt["prompt"], "high quality, no text"]))
 
