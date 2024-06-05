@@ -89,7 +89,19 @@ class ImageGenerator:
             ).start()
 
     def generate(self, filename, forced_prompt=None, callback=None):
-        image = LazyLoadingImage(filepath=filename)
+        from PIL import Image
+
+        image = Image.open(filename)
+        image = image.resize(
+            (int(512 * image.width / image.height), 512), resample=Image.BICUBIC
+        )
+        width, height = image.size
+        left = (width - 512) / 2
+        top = (height - 512) / 2
+        right = (width + 512) / 2
+        bottom = (height + 512) / 2
+        image = image.crop((left, top, right, bottom))
+        image = LazyLoadingImage(img=image)
         control_mode_depth = ControlInput(mode="depth", image=image, strength=0.5)
         control_mode_openpose = ControlInput(mode="openpose", image=image, strength=0.2)
         control_mode_canny = ControlInput(mode="canny", image=image, strength=0.2)

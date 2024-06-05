@@ -79,12 +79,17 @@ class PhotoBooth:
 
     def toggle_fullscreen(self):
         if not self.fullscreen:
+            infoObject = pygame.display.Info()
             self.screen = pygame.display.set_mode(
-                (self.screen_width, self.screen_height), pygame.FULLSCREEN
+                (infoObject.current_w, infoObject.current_h), pygame.FULLSCREEN
             )
+            self.screen_width = infoObject.current_w
+            self.screen_height = infoObject.current_h
             self.fullscreen = True
         else:
             self.screen = pygame.display.set_mode((1280, 720))
+            self.screen_width = 1280
+            self.screen_height = 720
             self.fullscreen = False
 
     def take_photo(self):
@@ -112,7 +117,7 @@ class PhotoBooth:
         self.generated_image_enabled = True
         self.sounds["success"].play()
         self.generated_image = pygame.transform.smoothscale(
-            self.generated_image, (self.screen_width, self.screen_height)
+            self.generated_image, (self.screen_height, self.screen_height)
         )
         self.generated_image_time = time.time()
 
@@ -290,7 +295,11 @@ class PhotoBooth:
                 self.generated_image.set_alpha(alpha)
             else:
                 self.generated_image.set_alpha(255)
-            self.screen.blit(self.generated_image, (0, 0))
+
+            self.screen.blit(
+                self.generated_image,
+                (((self.screen_width - self.screen_height) / 2), 0),
+            )
 
     def render_logo(self):
         logo = pygame.image.load("logo.png")
@@ -345,6 +354,24 @@ class PhotoBooth:
                 ),
             )
 
+    def render_sidebars(self):
+        width, height = pygame.display.get_window_size()
+        pygame.draw.rect(
+            self.screen,
+            (255, 255, 255),
+            (0, 0, (width - height) / 2, height),
+        )
+        pygame.draw.rect(
+            self.screen,
+            (255, 255, 255),
+            (
+                width - ((width - height) / 2),
+                0,
+                width,
+                height,
+            ),
+        )
+
     def run(self):
         while self.running:
             self.handle_events()
@@ -357,6 +384,7 @@ class PhotoBooth:
             self.render_printer_message()
             self.render_press_button()
             self.render_flash_screen()
+            self.render_sidebars()
             pygame.display.flip()
         self.cap.release()
         pygame.quit()
