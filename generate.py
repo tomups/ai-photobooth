@@ -3,7 +3,7 @@ import sys
 from imaginairy.api.generate import imagine, imagine_image_files
 from imaginairy.schema import ImaginePrompt, ControlInput, LazyLoadingImage, MaskMode
 
-# from imaginairy.enhancers.describe_image_blip import generate_caption
+
 import random
 import threading
 
@@ -92,16 +92,14 @@ class ImageGenerator:
         from PIL import Image
 
         image = Image.open(filename)
-        image = image.resize(
-            (int(512 * image.width / image.height), 512), resample=Image.BICUBIC
-        )
         width, height = image.size
-        left = (width - 512) / 2
-        top = (height - 512) / 2
-        right = (width + 512) / 2
-        bottom = (height + 512) / 2
+        new_size = min(width, height)
+        left = (width - new_size) / 2
+        top = (height - new_size) / 2
+        right = (width + new_size) / 2
+        bottom = (height + new_size) / 2
         image = image.crop((left, top, right, bottom))
-        image = LazyLoadingImage(img=image)
+        image.thumbnail((512, 512))
         control_mode_depth = ControlInput(mode="depth", image=image, strength=0.5)
         control_mode_openpose = ControlInput(mode="openpose", image=image, strength=0.2)
         control_mode_canny = ControlInput(mode="canny", image=image, strength=0.2)
@@ -129,14 +127,14 @@ class ImageGenerator:
         imagine_prompt = ImaginePrompt(
             prompt=", ".join([prompt["prompt"], "high quality, no text"]),
             negative_prompt="deformed hands, too many fingers, weird fingers, wrong fingers, weird hands, malformed, strange, ugly, duplication, duplicates, mutilation, deformed, mutilated, mutation, twisted body, disfigured, bad anatomy, out of frame, extra fingers, mutated hands, poorly drawn hands, extra limbs, malformed limbs, missing arms, extra arms, missing legs, extra legs, mutated hands, extra hands, fused fingers, missing fingers, extra fingers, long neck, small head, closed eyes, rolling eyes, weird eyes, smudged face, blurred face, poorly drawn face, mutation, mutilation, cloned face, strange mouth, grainy, blurred, blurry, writing, calligraphy, signature, text, watermark, bad art",
-            control_inputs=[control_mode_depth, control_mode_edit],
+            control_inputs=[control_mode_depth],
             seed=1,
             caption_text=prompt["caption"].upper(),
             init_image_strength=0.2,
-            mask_prompt="(face OR hair){-2}",
+            mask_prompt="(female face OR male face OR person face OR face OR hair){-2}",
             mask_mode=MaskMode.KEEP,
             init_image=image,
-            fix_faces=True,
+            fix_faces=False,
         )
 
         def debug_callback(img, description, image_count, step_count, prompt):
@@ -147,13 +145,9 @@ class ImageGenerator:
             imagine(prompts=imagine_prompt, debug_img_callback=debug_callback)
         )
 
-        # imagine_image_files(prompts=final_prompt, outdir="final", print_caption=True)
+        # imagine_image_files(prompts=imagine_prompt, outdir="final", print_caption=True)
 
         result.img.save(filename.split(".")[0] + "_generated." + filename.split(".")[1])
-
-    def caption(self, filename):
-        image = LazyLoadingImage(filepath=filename)
-        return generate_caption(image)
 
 
 if __name__ == "__main__":
@@ -161,6 +155,5 @@ if __name__ == "__main__":
         print("Usage: python generate.py <filename> <prompt>")
         sys.exit(1)
     generator = ImageGenerator(warmup=False)
-    # print(generator.caption(sys.argv[1]))
 
     generator.generate(sys.argv[1], sys.argv[2] if len(sys.argv) == 3 else None, None)

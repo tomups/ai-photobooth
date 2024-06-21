@@ -16,6 +16,7 @@ class PhotoBooth:
         self.screen_info = pygame.display.Info()
         self.screen_width = 1280  # self.screen_info.current_w
         self.screen_height = 720  # self.screen_info.current_h
+        self.sidebar_width = (self.screen_width - self.screen_height) / 2
         self.fullscreen = False
         self.screen = pygame.display.set_mode((1280, 720))
         self.screen.fill((255, 255, 255))
@@ -27,17 +28,9 @@ class PhotoBooth:
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self.webcam_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.webcam_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        self.webcam_aspect_ratio = self.webcam_width / self.webcam_height
-        self.screen_aspect_ratio = self.screen_width / self.screen_height
-        if self.webcam_aspect_ratio > self.screen_aspect_ratio:
-            self.scaled_width = self.screen_width
-            self.scaled_height = int(self.screen_width / self.webcam_aspect_ratio)
-        else:
-            self.scaled_height = self.screen_height
-            self.scaled_width = int(self.screen_height * self.webcam_aspect_ratio)
         self.running = True
         self.countdown_enabled = False
-        self.countdown_text = "Get ready!"
+        self.countdown_message = "Get ready!"
         self.countdown_start_time = None
         self.flash_screen_enabled = False
         self.flash_start_time = None
@@ -52,13 +45,16 @@ class PhotoBooth:
         self.printer_message_enabled = False
         self.printer_message_start_time = None
         self.image_generator = ImageGenerator(warmup=False)
-        self.printer = ImagePrinter(printer_name="Microsoft Print to PDF")
+        self.printer = ImagePrinter(
+            printer_name="Canon SELPHY CP1300"  # "Microsoft Print to PDF"
+        )
         self.sounds = {
             "shutter": pygame.mixer.Sound("sounds/shutter.mp3"),
             "success": pygame.mixer.Sound("sounds/success.mp3"),
             "print": pygame.mixer.Sound("sounds/print.mp3"),
             "blip": pygame.mixer.Sound("sounds/blip.mp3"),
         }
+        self.logo = pygame.image.load("sidebarlogo.png")
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -79,12 +75,12 @@ class PhotoBooth:
 
     def toggle_fullscreen(self):
         if not self.fullscreen:
-            infoObject = pygame.display.Info()
+            desktop_sizes = pygame.display.get_desktop_sizes()
             self.screen = pygame.display.set_mode(
-                (infoObject.current_w, infoObject.current_h), pygame.FULLSCREEN
+                (desktop_sizes[0][0], desktop_sizes[0][1]), pygame.FULLSCREEN
             )
-            self.screen_width = infoObject.current_w
-            self.screen_height = infoObject.current_h
+            self.screen_width = desktop_sizes[0][0]
+            self.screen_height = desktop_sizes[0][1]
             self.fullscreen = True
         else:
             self.screen = pygame.display.set_mode((1280, 720))
@@ -92,14 +88,24 @@ class PhotoBooth:
             self.screen_height = 720
             self.fullscreen = False
 
+        self.sidebar_width = (self.screen_width - self.screen_height) / 2
+
     def take_photo(self):
         self.flash_screen_enabled = True
         self.sounds["shutter"].play()
         self.flash_start_time = time.time()
         os.makedirs(f"sessions/{self.session}", exist_ok=True)
-        pygame.image.save(
-            self.camera_frame, f"sessions/{self.session}/{self.current_take}.jpg"
-        )
+        ret, frame = self.cap.read()
+        frame = cv2.flip(frame, 1)
+        height, width, _ = frame.shape
+        new_size = min(width, height)
+        left = (width - new_size) // 2
+        top = (height - new_size) // 2
+        right = (width + new_size) // 2
+        bottom = (height + new_size) // 2
+        frame = frame[top:bottom, left:right]
+        frame = cv2.resize(frame, (512, 512))
+        cv2.imwrite(f"sessions/{self.session}/{self.current_take}.jpg", frame)
         self.hold_frame_enabled = True
         self.generation_progress = 0
         self.generate_image()
@@ -143,13 +149,13 @@ class PhotoBooth:
             self.current_take = 0
             self.print_photos()
             return
-        self.countdown_text = "Two more!" if self.current_take == 2 else "Last one!"
+        self.countdown_message = "Two more!" if self.current_take == 2 else "Last one!"
         self.countdown_enabled = True
         self.countdown_start_time = time.time()
 
         if self.current_take == 1:
             self.session = int(time.time())
-            self.countdown_text = "Get ready!"
+            self.countdown_message = "Get ready!"
 
     def print_photos(self):
         self.printer_message_enabled = True
@@ -165,19 +171,15 @@ class PhotoBooth:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = pygame.surfarray.make_surface(frame)
             frame = pygame.transform.rotate(frame, -90)
-            frame = pygame.transform.scale(
-                frame, (self.scaled_width, self.scaled_height)
+            self.camera_frame = pygame.transform.smoothscale(
+                frame, (self.screen_width, self.screen_height)
             )
-            self.camera_frame = frame
         self.screen.fill(
             (255, 255, 255)
         )  # Fill the screen with white color before blitting the frame
         self.screen.blit(
             self.camera_frame,
-            (
-                (self.screen_width - self.scaled_width) // 2,
-                (self.screen_height - self.scaled_height) // 2,
-            ),
+            (0, 0),
         )
 
     def render_take_number(self):
@@ -194,18 +196,27 @@ class PhotoBooth:
             )
 
     def render_press_button(self):
+
         if (
             self.current_take == 0 or self.generated_image_enabled
         ) and not self.printer_message_enabled:
-            prompt_text = pygame.font.Font(None, 40).render(
-                "Press the big red button!", True, (200, 50, 50)
-            )
+            font = pygame.font.Font(None, 50)
+            font.align = pygame.FONT_CENTER
+            prompt_text = font.render("Press the\nbig red button!", True, (200, 50, 50))
             alpha = int((math.sin(time.time() * 2) + 1) * 155 + 100)
             prompt_text.set_alpha(alpha)
             self.screen.blit(
                 prompt_text,
                 (
-                    (self.screen_width - prompt_text.get_width()) // 2,
+                    (self.sidebar_width - prompt_text.get_width()) / 2,
+                    self.screen_height - prompt_text.get_height() - 10,
+                ),
+            )
+            self.screen.blit(
+                prompt_text,
+                (
+                    (self.sidebar_width + self.screen_height)
+                    + ((self.sidebar_width - prompt_text.get_width()) / 2),
                     self.screen_height - prompt_text.get_height() - 10,
                 ),
             )
@@ -216,23 +227,23 @@ class PhotoBooth:
             if elapsed_time >= 2 and elapsed_time < 3:
                 if not pygame.mixer.get_busy():
                     self.sounds["blip"].play()
-                self.countdown_text = 3
+                self.countdown_message = 3
             elif elapsed_time >= 3 and elapsed_time < 4:
                 if not pygame.mixer.get_busy():
                     self.sounds["blip"].play()
-                self.countdown_text = 2
-            elif elapsed_time >= 4 and elapsed_time < 5:
+                self.countdown_message = 2
+            elif elapsed_time >= 4 and elapsed_time < 4.5:
                 if not pygame.mixer.get_busy():
                     self.sounds["blip"].play()
-                self.countdown_text = 1
+                self.countdown_message = 1
             elif elapsed_time > 5:
                 self.countdown_enabled = False
                 self.take_photo()
 
             alpha = int(255 - (elapsed_time % 1) * 255)
-            countdown_text = pygame.font.Font(None, 300).render(
-                str(self.countdown_text), True, (255, 255, 255)
-            )
+            countdown_text = pygame.font.Font(
+                None, 300 if len(str(self.countdown_message)) == 1 else 100
+            ).render(str(self.countdown_message), True, (255, 255, 255))
             countdown_text.set_alpha(alpha)
             self.screen.blit(
                 countdown_text,
@@ -245,7 +256,7 @@ class PhotoBooth:
     def render_printer_message(self):
         if self.printer_message_enabled:
             elapsed_time = time.time() - self.printer_message_start_time
-            font = pygame.font.Font(None, 100)
+            font = pygame.font.Font(None, 70)
             font.align = pygame.FONT_CENTER
             printer_message_text = font.render(
                 "Check the printer\nfor your photos!".upper(),
@@ -302,11 +313,24 @@ class PhotoBooth:
             )
 
     def render_logo(self):
-        logo = pygame.image.load("logo.png")
+        logo = pygame.transform.smoothscale(
+            self.logo,
+            (
+                self.sidebar_width,
+                int(
+                    self.logo.get_height() * self.sidebar_width / self.logo.get_width()
+                ),
+            ),
+        )
 
-        logo_width = int(logo.get_width() * 50 / logo.get_height())
-        logo = pygame.transform.smoothscale(logo, (logo_width, 50))
-        self.screen.blit(logo, ((self.screen_width - logo.get_width()) // 2, 5))
+        self.screen.blit(logo, (0, self.screen_height / 2 - logo.get_height() / 2))
+        self.screen.blit(
+            logo,
+            (
+                self.sidebar_width + self.screen_height,
+                self.screen_height / 2 - logo.get_height() / 2,
+            ),
+        )
 
     def render_progress_bar(self):
         if self.hold_frame_enabled and not self.generated_image_enabled:
@@ -320,9 +344,9 @@ class PhotoBooth:
                 self.screen,
                 (255, 255, 255),
                 (
-                    self.screen_width / 2 - (self.screen_width * 0.7) / 2,
+                    self.screen_width / 2 - (self.screen_width / 2) / 2,
                     self.screen_height / 2 + 20,
-                    self.screen_width * 0.7,
+                    self.screen_width / 2,
                     40,
                 ),
                 2,
@@ -332,9 +356,9 @@ class PhotoBooth:
                 self.screen,
                 (255, 255, 255),
                 (
-                    self.screen_width / 2 - (self.screen_width * 0.7) / 2,
+                    self.screen_width / 2 - (self.screen_width / 2) / 2,
                     self.screen_height / 2 + 20,
-                    (self.generation_progress / 59) * (self.screen_width * 0.7),
+                    (self.generation_progress / 59) * (self.screen_width / 2),
                     40,
                 ),
             )
@@ -355,20 +379,19 @@ class PhotoBooth:
             )
 
     def render_sidebars(self):
-        width, height = pygame.display.get_window_size()
         pygame.draw.rect(
             self.screen,
             (255, 255, 255),
-            (0, 0, (width - height) / 2, height),
+            (0, 0, self.sidebar_width, self.screen_height),
         )
         pygame.draw.rect(
             self.screen,
             (255, 255, 255),
             (
-                width - ((width - height) / 2),
+                self.sidebar_width + self.screen_height,
                 0,
-                width,
-                height,
+                self.sidebar_width,
+                self.screen_height,
             ),
         )
 
@@ -376,15 +399,17 @@ class PhotoBooth:
         while self.running:
             self.handle_events()
             self.render_camera_frame()
+            self.render_sidebars()
             self.render_take_number()
             self.render_countdown()
             self.render_progress_bar()
             self.render_generated_image()
-            self.render_logo()
             self.render_printer_message()
             self.render_press_button()
             self.render_flash_screen()
-            self.render_sidebars()
+
+            self.render_logo()
+
             pygame.display.flip()
         self.cap.release()
         pygame.quit()

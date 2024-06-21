@@ -6,7 +6,7 @@ from PIL import ImageWin
 
 class ImagePrinter:
     def __init__(
-        self, margin_left=80, margin_top=5, image_size=(512, 288), printer_name=None
+        self, margin_left=80, margin_top=52, image_size=(512, 512), printer_name=None
     ):
         self.margin_left = margin_left
         self.margin_top = margin_top
@@ -15,7 +15,7 @@ class ImagePrinter:
         self.printer_name = printer_name
 
         self.logo = self.logo.resize(
-            (int(260 * self.logo.width / self.logo.height), 260)
+            (int(image_size[1] * self.logo.width / self.logo.height), image_size[1])
         )
 
     def compose(self, orig1, orig2, orig3, gen1, gen2, gen3):
@@ -31,22 +31,28 @@ class ImagePrinter:
         new_img = Image.new("RGB", (1181, 1748), color="white")
 
         # Calculate the positions to paste the images
-        pos_list = [(self.margin_left, self.margin_top + i * 290) for i in range(6)]
+        pos_list = [
+            (
+                self.margin_left,
+                self.margin_top + i * (self.image_size[1] + self.margin_top),
+            )
+            for i in range(3)
+        ]
 
-        # Paste the images
-        for i, (orig_img, gen_img) in enumerate(
-            zip(orig_imgs + orig_imgs, gen_imgs + gen_imgs)
-        ):
+        # Paste the images and logos
+        for i, (orig_img, gen_img) in enumerate(zip(orig_imgs, gen_imgs)):
             new_img.paste(
                 self.logo,
-                (pos_list[i][0] - self.logo.width - 3, pos_list[i][1] + 12),
+                (pos_list[i][0] - self.logo.width - 5, pos_list[i][1]),
                 mask=self.logo,
             )
             new_img.paste(orig_img, pos_list[i])
-            new_img.paste(gen_img, (pos_list[i][0] + 512, pos_list[i][1]))
+            new_img.paste(
+                gen_img, (pos_list[i][0] + self.image_size[0], pos_list[i][1])
+            )
             new_img.paste(
                 self.logo.rotate(180),
-                (pos_list[i][0] + 512 * 2 + 3, pos_list[i][1] + 12),
+                (pos_list[i][0] + self.image_size[0] * 2 + 5, pos_list[i][1]),
                 mask=self.logo.rotate(180),
             )
 
@@ -105,6 +111,8 @@ class ImagePrinter:
             f"sessions/{session}/2_generated.jpg",
             f"sessions/{session}/3_generated.jpg",
         )
+        # composition.show()
+        # return
 
         composition.save(f"sessions/{session}/composition.jpg")
         self.print_image(f"sessions/{session}/composition.jpg", self.printer_name)
@@ -113,21 +121,7 @@ class ImagePrinter:
 def main():
     generator = ImagePrinter()
 
-    generator.print_image(
-        "output.jpg",
-        "Microsoft Print to PDF",
-        # "Canon SELPHY CP1300"
-    )
-    return
-
-    generator.generate_image(
-        "capture.jpg",
-        "capture.jpg",
-        "capture.jpg",
-        "final/capture.jpg",
-        "final/capture.jpg",
-        "final/capture.jpg",
-    )
+    generator.print_session(1718651223)
 
 
 if __name__ == "__main__":
