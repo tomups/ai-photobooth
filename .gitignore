@@ -1,6 +1,7 @@
-sessions
+/sessions
 __pycache__
 *_generated*
 capture.*
 output.*
-final
+/final
+venv

@@ -21,7 +21,9 @@ class PhotoBooth:
         self.screen = pygame.display.set_mode((1280, 720))
         self.screen.fill((255, 255, 255))
         pygame.display.set_caption("AI Tinkerers Photobooth")
-        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.cap = cv2.VideoCapture(
+            0, cv2.CAP_DSHOW
+        )  # makes it load faster in Windows. Most likely no needed in Mac / Linux?
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Set webcam to 720p
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv2.CAP_PROP_FPS, 30)

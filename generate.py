@@ -1,4 +1,3 @@
-import os
 import sys
 from imaginairy.api.generate import imagine, imagine_image_files
 from imaginairy.schema import ImaginePrompt, ControlInput, LazyLoadingImage, MaskMode
