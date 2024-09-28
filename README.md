@@ -2,6 +2,8 @@
 
 An interactive photobooth application using Stable Diffusion 1.5 for AI-powered image generation with face preservation.
 
+Made for [AI Tinkerers Amsterdam](https://amsterdam.aitinkerers.org/)
+
 Fully local (hope you have a decent GPU!).
 
 ## Features
