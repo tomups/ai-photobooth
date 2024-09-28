@@ -82,10 +82,8 @@ class ImageGenerator:
     already_used_prompts = set()
 
     def __init__(self, warmup=True):
-        if warmup:
-            threading.Thread(
-                target=self.generate, args=("logo.png", "AI Tinkerers")
-            ).start()
+        if warmup:            
+            self.generate("logo.png", "AI Tinkerers")
 
     def generate(self, filename, forced_prompt=None, callback=None):
         from PIL import Image

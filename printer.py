@@ -2,6 +2,7 @@ from PIL import Image
 import win32print
 import win32ui
 from PIL import ImageWin
+import os
 
 
 class ImagePrinter:
@@ -20,8 +21,23 @@ class ImagePrinter:
 
     def compose(self, orig1, orig2, orig3, gen1, gen2, gen3):
         # Open the images
-        orig_imgs = [Image.open(img) for img in [orig1, orig2, orig3]]
-        gen_imgs = [Image.open(img) for img in [gen1, gen2, gen3]]
+        orig_imgs = []
+        gen_imgs = []
+        for img_path in [orig1, orig2, orig3]:
+            img_path = self.normalize_path(img_path)
+            if os.path.exists(img_path):
+                orig_imgs.append(Image.open(img_path))
+            else:
+                print(f"Warning: Image not found: {img_path}")
+                orig_imgs.append(Image.new("RGB", self.image_size, color="white"))
+        
+        for img_path in [gen1, gen2, gen3]:
+            img_path = self.normalize_path(img_path)
+            if os.path.exists(img_path):
+                gen_imgs.append(Image.open(img_path))
+            else:
+                print(f"Warning: Image not found: {img_path}")
+                gen_imgs.append(Image.new("RGB", self.image_size, color="white"))
 
         # Resize the images
         orig_imgs = [img.resize(self.image_size) for img in orig_imgs]
@@ -58,12 +74,16 @@ class ImagePrinter:
 
         return new_img
 
-    def print_image(self, image_path, printer_name=None):
-        img = Image.open(image_path).rotate(90, expand=True)
+    def normalize_path(self, path):
+        return os.path.normpath(path.replace('\\', '/'))
 
-        # printers = win32print.EnumPrinters(2)
-        # for p in printers:
-        #    print(p[2])
+    def print_image(self, image_path, printer_name=None):
+        image_path = self.normalize_path(image_path)
+        if not os.path.exists(image_path):
+            print(f"Error: Image not found: {image_path}")
+            return
+
+        img = Image.open(image_path).rotate(90, expand=True)
 
         # Get the printer name
         if printer_name is None:
@@ -103,19 +123,23 @@ class ImagePrinter:
             win32print.ClosePrinter(hprinter)
 
     def print_session(self, session):
-        composition = self.compose(
-            f"sessions/{session}/1.jpg",
-            f"sessions/{session}/2.jpg",
-            f"sessions/{session}/3.jpg",
-            f"sessions/{session}/1_generated.jpg",
-            f"sessions/{session}/2_generated.jpg",
-            f"sessions/{session}/3_generated.jpg",
-        )
-        # composition.show()
-        # return
+        session_dir = self.normalize_path(f"sessions/{session}")
+        if not os.path.exists(session_dir):
+            print(f"Error: Session directory not found: {session_dir}")
+            return
 
-        composition.save(f"sessions/{session}/composition.jpg")
-        self.print_image(f"sessions/{session}/composition.jpg", self.printer_name)
+        composition = self.compose(
+            os.path.join(session_dir, "1.jpg"),
+            os.path.join(session_dir, "2.jpg"),
+            os.path.join(session_dir, "3.jpg"),
+            os.path.join(session_dir, "1_generated.jpg"),
+            os.path.join(session_dir, "2_generated.jpg"),
+            os.path.join(session_dir, "3_generated.jpg"),
+        )
+
+        composition_path = os.path.join(session_dir, "composition.jpg")
+        composition.save(composition_path)
+        self.print_image(composition_path, self.printer_name)
 
 
 def main():

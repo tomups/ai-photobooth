@@ -45,8 +45,7 @@ class PhotoBooth:
         self.current_take = 0
         self.generation_progress = 30
         self.printer_message_enabled = False
-        self.printer_message_start_time = None
-        self.image_generator = ImageGenerator(warmup=False)
+        self.printer_message_start_time = None        
         self.printer = ImagePrinter(
             printer_name="Canon SELPHY CP1300"  # "Microsoft Print to PDF"
         )
@@ -57,6 +56,24 @@ class PhotoBooth:
             "blip": pygame.mixer.Sound("sounds/blip.mp3"),
         }
         self.logo = pygame.image.load("sidebarlogo.png")
+        self.confirmation_countdown_enabled = False
+        self.confirmation_start_time = None
+        
+        # Define font colors
+        self.main_font_color = (72, 89, 173)
+        self.side_font_color = (200, 50, 50)
+
+        # Create a surface for the "Warming up" message
+        self.warmup_surface = pygame.Surface((self.screen_width, self.screen_height))
+        self.warmup_surface.fill((255, 255, 255))  # White background
+
+        self.render_text_with_outline("Warming up", pygame.font.Font(None, 100), self.main_font_color, (self.screen_width // 2, self.screen_height // 2))       
+        
+
+        pygame.display.flip()
+        
+
+        self.image_generator = ImageGenerator(warmup=True)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -70,9 +87,11 @@ class PhotoBooth:
                 elif (
                     event.key == pygame.K_SPACE
                     and not self.countdown_enabled
-                    and not self.printer_message_enabled
-                    and (not self.hold_frame_enabled or self.generated_image_enabled)
+                    and not self.printer_message_enabled                    
                 ):
+                    if self.confirmation_countdown_enabled:
+                        self.confirmation_countdown_enabled = False
+                        self.current_take -= 1
                     self.start_next_take()
 
     def toggle_fullscreen(self):
@@ -110,7 +129,8 @@ class PhotoBooth:
         cv2.imwrite(f"sessions/{self.session}/{self.current_take}.jpg", frame)
         self.hold_frame_enabled = True
         self.generation_progress = 0
-        self.generate_image()
+        self.confirmation_countdown_enabled = True
+        self.confirmation_start_time = time.time()
 
     def show_generated_image(self):
         for _ in range(5):
@@ -151,7 +171,6 @@ class PhotoBooth:
             self.current_take = 0
             self.print_photos()
             return
-        self.countdown_message = "Two more!" if self.current_take == 2 else "Last one!"
         self.countdown_enabled = True
         self.countdown_start_time = time.time()
 
@@ -187,41 +206,70 @@ class PhotoBooth:
     def render_take_number(self):
         if self.current_take > 0:
             take_text = pygame.font.Font(None, 50).render(
-                f"Photo {self.current_take} / 3", True, (255, 255, 255)
+                f"Photo {self.current_take} / 3", True, self.main_font_color
+            )
+
+            self.screen.blit(
+                take_text,
+                (
+                    45,
+                    30,
+                ),
             )
             self.screen.blit(
                 take_text,
                 (
-                    self.screen_width - take_text.get_width() - 10,
-                    self.screen_height - take_text.get_height() - 10,
+                    self.screen_width - take_text.get_width() - 45,
+                    30,
                 ),
             )
 
-    def render_press_button(self):
+           
 
+    def render_text_with_outline(self, text, font, color, position, alpha=255):
+        outline_color = (255, 255, 255)  # White outline
+        outline_width = 2
+
+        # Render the outline
+        outline_surface = font.render(text, True, outline_color)
+        outline_surface.set_alpha(alpha)
+        outline_rect = outline_surface.get_rect(center=position)
+
+        # Create a temporary surface for blitting outlines
+        temp_surface = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+
+        # Blit outline in all directions on the temporary surface
+        for dx, dy in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+            temp_surface.blit(outline_surface, (outline_rect.x + dx * outline_width, outline_rect.y + dy * outline_width))
+
+        # Render the main text
+        text_surface = font.render(text, True, color)
+        text_surface.set_alpha(alpha)
+        text_rect = text_surface.get_rect(center=position)
+        temp_surface.blit(text_surface, text_rect)
+
+        # Blit the temporary surface onto the screen
+        self.screen.blit(temp_surface, (0, 0))
+
+    
+
+    def render_press_button(self):
         if (
-            self.current_take == 0 or self.generated_image_enabled
+            self.current_take == 0
         ) and not self.printer_message_enabled:
             font = pygame.font.Font(None, 50)
             font.align = pygame.FONT_CENTER
-            prompt_text = font.render("Press the\nbig red button!", True, (200, 50, 50))
             alpha = int((math.sin(time.time() * 2) + 1) * 155 + 100)
-            prompt_text.set_alpha(alpha)
-            self.screen.blit(
-                prompt_text,
-                (
-                    (self.sidebar_width - prompt_text.get_width()) / 2,
-                    self.screen_height - prompt_text.get_height() - 10,
-                ),
-            )
-            self.screen.blit(
-                prompt_text,
-                (
-                    (self.sidebar_width + self.screen_height)
-                    + ((self.sidebar_width - prompt_text.get_width()) / 2),
-                    self.screen_height - prompt_text.get_height() - 10,
-                ),
-            )
+            
+            left_position = (self.sidebar_width // 2, self.screen_height - 50)
+            right_position = (self.screen_width - self.sidebar_width // 2, self.screen_height - 50)
+            
+            for position in [left_position, right_position]:
+
+                text_surface = font.render("Press the big\nred button!", True, self.side_font_color)
+                text_surface.set_alpha(alpha)
+                text_rect = text_surface.get_rect(center=position)
+                self.screen.blit(text_surface, text_rect)
 
     def render_countdown(self):
         if self.countdown_enabled:
@@ -243,56 +291,74 @@ class PhotoBooth:
                 self.take_photo()
 
             alpha = int(255 - (elapsed_time % 1) * 255)
-            countdown_text = pygame.font.Font(
-                None, 300 if len(str(self.countdown_message)) == 1 else 100
-            ).render(str(self.countdown_message), True, (255, 255, 255))
-            countdown_text.set_alpha(alpha)
-            self.screen.blit(
-                countdown_text,
-                (
-                    self.screen_width // 2 - countdown_text.get_width() // 2,
-                    self.screen_height // 2 - countdown_text.get_height() // 2,
-                ),
+            font = pygame.font.Font(None, 300 if len(str(self.countdown_message)) == 1 else 100)
+            position = (self.screen_width // 2, self.screen_height // 2)
+            
+            self.render_text_with_outline(
+                str(self.countdown_message),
+                font,
+                self.main_font_color,
+                position,
+                alpha=alpha                
             )
+
+    def render_confirmation_countdown(self):
+        if self.confirmation_countdown_enabled:
+            elapsed_time = time.time() - self.confirmation_start_time
+            remaining_time = max(0, 5 - int(elapsed_time))
+
+            font = pygame.font.Font(None, 100)
+            position = (self.screen_width // 2, 100)
+            self.render_text_with_outline(f"Is it good?", font, self.main_font_color, position)
+            
+            font = pygame.font.Font(None, 50)
+            position = (self.screen_width // 2, self.screen_height - 150)
+            self.render_text_with_outline(f"If not, press the button to retake", font, self.main_font_color, position)
+
+            font = pygame.font.Font(None, 100)            
+            position = (self.screen_width // 2, self.screen_height - 90)
+            self.render_text_with_outline(f"{remaining_time}", font, self.main_font_color, position)
+            
+            if elapsed_time > 5:
+                self.confirmation_countdown_enabled = False
+                self.generate_image()
+
+    def render_press_to_continue(self):
+        if self.generated_image_enabled:
+            font = pygame.font.Font(None, 50)
+            position = (self.screen_width // 2, 50)            
+            
+            alpha = int(127.5 + 127.5 * math.sin(time.time() * 2))  
+            
+            self.render_text_with_outline(
+                f"Press the button to {'take the next photo' if self.current_take < 3 else 'print your photos'}",
+                font,
+                self.main_font_color,
+                position,
+                alpha=alpha
+            )
+            
 
     def render_printer_message(self):
         if self.printer_message_enabled:
             elapsed_time = time.time() - self.printer_message_start_time
             font = pygame.font.Font(None, 70)
             font.align = pygame.FONT_CENTER
-            printer_message_text = font.render(
-                "Check the printer\nfor your photos!".upper(),
-                True,
-                (255, 255, 255),
-            )
+            position = (self.screen_width // 2, self.screen_height // 2)
+            
             if elapsed_time <= 1:
                 alpha = int(255 * elapsed_time)
-
-                printer_message_text.set_alpha(alpha)
-                self.screen.blit(
-                    printer_message_text,
-                    (
-                        (self.screen_width - printer_message_text.get_width()) // 2,
-                        self.screen_height // 2
-                        - printer_message_text.get_height() // 2,
-                    ),
-                )
             elif elapsed_time > 1 and elapsed_time <= 6:
-                printer_message_text.set_alpha(255)
+                alpha = 255
             elif elapsed_time > 6 and elapsed_time <= 7:
                 alpha = int(255 - (elapsed_time - 6) * 255)
-                printer_message_text.set_alpha(alpha)
             else:
                 self.printer_message_enabled = False
-                printer_message_text.set_alpha(0)
+                alpha = 0
+                self.current_take = 0  # Reset for the next photo
 
-            self.screen.blit(
-                printer_message_text,
-                (
-                    (self.screen_width - printer_message_text.get_width()) // 2,
-                    self.screen_height // 2 - printer_message_text.get_height() // 2,
-                ),
-            )
+            message = "Check the printer\nfor your photo!".upper()
+            self.render_text_with_outline(message, font, self.main_font_color, position, alpha=alpha)
 
     def render_flash_screen(self):
         if self.flash_screen_enabled:
@@ -335,7 +401,7 @@ class PhotoBooth:
         )
 
     def render_progress_bar(self):
-        if self.hold_frame_enabled and not self.generated_image_enabled:
+        if self.hold_frame_enabled and not self.generated_image_enabled and not self.confirmation_countdown_enabled:
             if os.path.exists(
                 f"sessions/{self.session}/{self.current_take}_generated.jpg"
             ):
@@ -356,7 +422,7 @@ class PhotoBooth:
             # Draw progress bar
             pygame.draw.rect(
                 self.screen,
-                (255, 255, 255),
+                self.main_font_color,
                 (
                     self.screen_width / 2 - (self.screen_width / 2) / 2,
                     self.screen_height / 2 + 20,
@@ -365,20 +431,11 @@ class PhotoBooth:
                 ),
             )
             # Draw "Generating..." text
-            generating_text = pygame.font.Font(None, 100).render(
-                "Generating...", True, (255, 255, 255)
-            )
-
-            # Fade in and out effect
-            alpha = int((math.sin(time.time() * 2) + 1) * 127.5)
-            generating_text.set_alpha(alpha)
-            self.screen.blit(
-                generating_text,
-                (
-                    self.screen_width / 2 - generating_text.get_width() / 2,
-                    self.screen_height / 2 - 60,
-                ),
-            )
+            font = pygame.font.Font(None, 100)
+            position = (self.screen_width / 2, self.screen_height / 2 - 60)
+            
+            alpha = int((math.sin(time.time() * 2) + 1) * 127.5 + 127.5)  # Adjusted to range 127.5-255
+            self.render_text_with_outline("Generating...", font, self.main_font_color, position, alpha)
 
     def render_sidebars(self):
         pygame.draw.rect(
@@ -401,15 +458,17 @@ class PhotoBooth:
         while self.running:
             self.handle_events()
             self.render_camera_frame()
-            self.render_sidebars()
-            self.render_take_number()
+            self.render_sidebars()            
             self.render_countdown()
+            self.render_confirmation_countdown()            
             self.render_progress_bar()
             self.render_generated_image()
             self.render_printer_message()
             self.render_press_button()
+            self.render_press_to_continue()
             self.render_flash_screen()
-
+            
+            self.render_take_number()
             self.render_logo()
 
             pygame.display.flip()
