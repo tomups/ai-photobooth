@@ -33,7 +33,7 @@ This has been tailored for my particular laptop, running on Windows. It might ne
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/ai-tinkerers-photobooth.git
+   git clone https://github.com/your-username/ai-photobooth.git
    cd ai-tinkerers-photobooth
    ```
 
