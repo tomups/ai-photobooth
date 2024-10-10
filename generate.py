@@ -1,6 +1,7 @@
 import sys
 from imaginairy.api.generate import imagine, imagine_image_files
 from imaginairy.schema import ImaginePrompt, ControlInput, LazyLoadingImage, MaskMode
+from PIL import Image
 
 
 import random
@@ -86,8 +87,6 @@ class ImageGenerator:
             self.generate("logo.png", "AI Tinkerers")
 
     def generate(self, filename, forced_prompt=None, callback=None):
-        from PIL import Image
-
         image = Image.open(filename)
         width, height = image.size
         new_size = min(width, height)
@@ -126,7 +125,7 @@ class ImageGenerator:
             negative_prompt="deformed hands, too many fingers, weird fingers, wrong fingers, weird hands, malformed, strange, ugly, duplication, duplicates, mutilation, deformed, mutilated, mutation, twisted body, disfigured, bad anatomy, out of frame, extra fingers, mutated hands, poorly drawn hands, extra limbs, malformed limbs, missing arms, extra arms, missing legs, extra legs, mutated hands, extra hands, fused fingers, missing fingers, extra fingers, long neck, small head, closed eyes, rolling eyes, weird eyes, smudged face, blurred face, poorly drawn face, mutation, mutilation, cloned face, strange mouth, grainy, blurred, blurry, writing, calligraphy, signature, text, watermark, bad art",
             control_inputs=[control_mode_depth],
             seed=1,
-            caption_text=prompt["caption"].upper(),
+            #caption_text=prompt["caption"].upper(),
             init_image_strength=0.2,
             mask_prompt="(female face OR male face OR person face OR face OR hair){-2}",
             mask_mode=MaskMode.KEEP,
