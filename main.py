@@ -6,7 +6,8 @@ import time
 import math
 import os
 
-from generate import ImageGenerator
+from painter import Painter
+from poet import Poet
 import threading
 
 from printer import ImagePrinter
@@ -15,6 +16,7 @@ from printer import ImagePrinter
 class PhotoBooth:
     def __init__(self):
         pygame.init()
+        self.clock = pygame.time.Clock()
 
         self.states = ["waiting", "pose", "countdown", "photo", "confirmation", "generating", "generated", "print"]
         self.state = self.states[0]
@@ -37,7 +39,7 @@ class PhotoBooth:
         self.fullscreen = False
         self.screen = pygame.display.set_mode((1280, 720))
         self.screen.fill(self.background_color)
-        pygame.display.set_caption("Muse for the Machine")
+        pygame.display.set_caption("Muse Machine")
         self.cap = cv2.VideoCapture(
             0, cv2.CAP_DSHOW
         )  # makes it load faster in Windows. Most likely no needed in Mac / Linux?
@@ -49,15 +51,13 @@ class PhotoBooth:
         self.webcam_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self.running = True
         
-        self.hold_current_camera_frame = False
-        self.generated_image_enabled = False
+        self.hold_current_camera_frame = False        
         self.generated_image = None
-        self.generated_image_time = 0
+        self.poem = None        
         self.camera_frame = None
         self.session = int(time.time())
         self.current_take = 0
-        self.generation_progress = 30
-        self.printer_message_enabled = False
+        self.generation_progress = 30        
         
         self.printer = ImagePrinter(
             printer_name="Microsoft Print to PDF"  # "Canon SELPHY CP1300"
@@ -77,9 +77,11 @@ class PhotoBooth:
         self.font.size = 100
         self.render_text_with_outline("waking up", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2))        
 
-        pygame.display.flip()        
+        pygame.display.flip()
 
-        self.image_generator = ImageGenerator(warmup=True)
+        self.painter = Painter(warmup=True)
+        self.poet = Poet()
+        self.poet.load_model()
         self.font.size = 40
 
     def next_state(self):
@@ -87,6 +89,9 @@ class PhotoBooth:
         if current_index == len(self.states) - 1:
             self.state = self.states[0]
             self.hold_current_camera_frame = False
+            self.poem = None
+            self.generated_image = None
+            self.session = int(time.time())
         else:
             self.state = self.states[current_index + 1]
         self.start_time = time.time()
@@ -156,7 +161,7 @@ class PhotoBooth:
     def generate_image(self):
         self.generation_progress = 0
         threading.Thread(
-            target=self.image_generator.generate,
+            target=self.painter.generate,
             args=(
                 f"sessions/{self.session}/{self.current_take}.jpg",
                 None,
@@ -164,11 +169,19 @@ class PhotoBooth:
             ),
         ).start()
 
+    def generate_poem(self):
+        threading.Thread(
+            target=self.poet.generate,
+            args=[
+                f"sessions/{self.session}/{self.current_take}_generated.jpg"
+            ],
+        ).start()
+
     def update_progress(self):
         self.generation_progress += 1    
 
     def print_photos(self):        
-        self.sounds["print"].play()        
+        #self.sounds["print"].play()        
         self.printer.print_session(self.session)
 
     def render_camera_frame(self):
@@ -289,9 +302,7 @@ class PhotoBooth:
 
     def render_printer_message(self):        
         elapsed_time = time.time() - self.start_time
-        self.font.size = 60
         
-        position = (self.screen_width // 2, self.screen_height // 2)
         
         if elapsed_time <= 1:
             alpha = int(255 * elapsed_time)
@@ -300,31 +311,26 @@ class PhotoBooth:
         elif elapsed_time > 6 and elapsed_time <= 7:
             alpha = int(255 - (elapsed_time - 6) * 255)
         if elapsed_time > 7:
+            self.print_photos()
             alpha = 0
-            self.next_state()            
+            self.next_state()
+            return
 
-        message = "thank you, my muse".upper()
-        self.render_text_with_outline(message, self.font, self.main_font_color, position, alpha=alpha)
+        self.screen.blit(
+            self.generated_image,
+            (((self.screen_width - self.screen_height) / 2), 0),
+        )        
+        
+        self.font.size = 60
+        self.render_text_with_outline("THANK YOU, MY MUSE", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2), alpha=alpha)
+
+        self.font.size = 40
+        self.render_text_with_outline("i'm printing it for you", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 + 100), alpha=alpha)
 
     def render_flash_screen(self):
         self.screen.fill((255, 255, 255))        
 
-    def render_generated(self):
-        if not self.generated_image:
-            for _ in range(5):
-                try:
-                    self.generated_image = pygame.image.load(
-                        f"sessions/{self.session}/{self.current_take}_generated.jpg"
-                    )
-                    break
-                except:
-                    time.sleep(0.5)        
-            
-            self.generated_image = pygame.transform.smoothscale(
-                self.generated_image, (self.screen_height, self.screen_height)
-            )
-        
-        
+    def render_generated(self):        
         elapsed_time = time.time() - self.start_time
         if elapsed_time <= 2:
             alpha = int(255 * elapsed_time / 2)
@@ -336,6 +342,22 @@ class PhotoBooth:
             self.generated_image,
             (((self.screen_width - self.screen_height) / 2), 0),
         )
+
+        self.font.size = 40
+
+        if elapsed_time > 5 and elapsed_time <= 8:
+            self.render_text_with_outline("you are a great muse", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 - 60))
+            self.render_text_with_outline("you inspired me", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2))
+            self.render_text_with_outline("to write this poem", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 + 60))
+
+        if elapsed_time > 8:
+            self.font.size = 35
+            lines = self.poem.split('\n')
+            for i, line in enumerate(lines):
+                y_position = self.screen_height // 2 - (len(lines) - 1) * 30 + i * 60
+                self.render_text_with_outline(line, self.font, self.main_font_color, (self.screen_width // 2, y_position))
+            
+            self.render_text_with_outline("press the button once again", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height - 60))
 
     def render_static_overlay(self):
         # Create a smaller surface for the static
@@ -386,14 +408,9 @@ class PhotoBooth:
         
         # Blit the faded logo on both sidebars
         self.screen.blit(faded_logo, (x_pos_left, 0))
-        self.screen.blit(faded_logo, (x_pos_right, 0))
+        self.screen.blit(faded_logo, (x_pos_right, 0))    
 
-    def render_generating(self):        
-        if os.path.exists(
-            f"sessions/{self.session}/{self.current_take}_generated.jpg"
-        ):
-            self.next_state()            
-
+    def render_generating(self):
         # Draw progress bar border
         pygame.draw.rect(
             self.screen,
@@ -418,11 +435,33 @@ class PhotoBooth:
             ),
         )
         # Draw "Generating..." text
-        self.font.size = 80
-        position = (self.screen_width / 2, self.screen_height / 2 - 60)
+        self.font.size = 60
+        position = (self.screen_width / 2, self.screen_height / 2 - 40)
         
-        alpha = int((math.sin(time.time() * 2) + 1) * 127.5 + 127.5)  # Adjusted to range 127.5-255
-        self.render_text_with_outline("Processing...", self.font, self.main_font_color, position, alpha)
+        alpha = int((math.sin(time.time() * 2) + 1) * 127.5 + 127.5)  
+        self.render_text_with_outline("let me paint you", self.font, self.main_font_color, position, alpha)
+
+        if not self.generated_image:            
+            try:
+                self.generated_image = pygame.image.load(
+                    f"sessions/{self.session}/{self.current_take}_generated.jpg"
+                )             
+                self.generated_image = pygame.transform.smoothscale(
+                    self.generated_image, (self.screen_height, self.screen_height)
+                )      
+                self.generate_poem()                    
+            except:
+                pass
+                
+        elif not self.poem:            
+            try:
+                with open(f"sessions/{self.session}/poem.txt", "r") as file:
+                    self.poem = file.read().strip()        
+                self.start_time = time.time()        
+            except:
+                pass
+        else:
+            self.next_state()        
 
     def render_sidebars(self):
         pygame.draw.rect(
@@ -464,17 +503,16 @@ class PhotoBooth:
             if self.state == "generating":
                 self.render_generating()
             if self.state == "generated":
-                self.render_generated()
+                self.render_generated()       
             if self.state == "print":
-                self.render_generated()
-                self.render_printer_message()
+                self.render_printer_message()                      
                                               
             self.render_logo()            
-            #self.render_static_overlay()    
-            
+            self.render_static_overlay()             
             
 
             pygame.display.flip()
+            self.clock.tick(60)
         self.cap.release()
         pygame.quit()
 

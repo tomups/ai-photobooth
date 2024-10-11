@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import win32print
 import win32ui
 from PIL import ImageWin
@@ -7,72 +7,73 @@ import os
 
 class ImagePrinter:
     def __init__(
-        self, margin_left=80, margin_top=52, image_size=(512, 512), printer_name=None
+        self, printer_name=None
     ):
-        self.margin_left = margin_left
-        self.margin_top = margin_top
-        self.image_size = image_size
-        self.logo = Image.open("logo.png").rotate(90, expand=True)
+        self.canvas_width = 1748
+        self.canvas_height = 1181
+        self.image_size = (870, 870)        
+        self.logo = Image.open("sidebarlogo.png")
         self.printer_name = printer_name
-
-        self.logo = self.logo.resize(
-            (int(image_size[1] * self.logo.width / self.logo.height), image_size[1])
-        )
-
-    def compose(self, orig1, orig2, orig3, gen1, gen2, gen3):
-        # Open the images
-        orig_imgs = []
-        gen_imgs = []
-        for img_path in [orig1, orig2, orig3]:
-            img_path = self.normalize_path(img_path)
-            if os.path.exists(img_path):
-                orig_imgs.append(Image.open(img_path))
-            else:
-                print(f"Warning: Image not found: {img_path}")
-                orig_imgs.append(Image.new("RGB", self.image_size, color="white"))
         
-        for img_path in [gen1, gen2, gen3]:
-            img_path = self.normalize_path(img_path)
-            if os.path.exists(img_path):
-                gen_imgs.append(Image.open(img_path))
-            else:
-                print(f"Warning: Image not found: {img_path}")
-                gen_imgs.append(Image.new("RGB", self.image_size, color="white"))
 
+    def compose(self, image_path, poem_path):        
+        image_path = self.normalize_path(image_path)
+        if os.path.exists(image_path):
+            image = Image.open(image_path)
+        else:
+            print(f"Warning: Image not found: {image_path}")
+            image = Image.new("RGB", self.image_size, color="white")    
+
+        poem_path = self.normalize_path(poem_path)
+        if os.path.exists(poem_path):
+            with open(poem_path, "r") as file:
+                poem = file.read()
+        else:
+            print(f"Warning: Poem not found: {poem_path}")
+            poem = ""
+        
         # Resize the images
-        orig_imgs = [img.resize(self.image_size) for img in orig_imgs]
-        gen_imgs = [img.resize(self.image_size) for img in gen_imgs]
+        image = image.resize(self.image_size)        
 
         # Create a new image with the desired size
-        new_img = Image.new("RGB", (1181, 1748), color="white")
+        canvas = Image.new("RGB", (self.canvas_width, self.canvas_height), color="white")        
 
-        # Calculate the positions to paste the images
-        pos_list = [
-            (
-                self.margin_left,
-                self.margin_top + i * (self.image_size[1] + self.margin_top),
-            )
-            for i in range(3)
-        ]
+        canvas.paste(image, (self.canvas_width // 2 - self.image_size[0] // 2, 30))        
 
-        # Paste the images and logos
-        for i, (orig_img, gen_img) in enumerate(zip(orig_imgs, gen_imgs)):
-            new_img.paste(
-                self.logo,
-                (pos_list[i][0] - self.logo.width - 5, pos_list[i][1]),
-                mask=self.logo,
-            )
-            new_img.paste(orig_img, pos_list[i])
-            new_img.paste(
-                gen_img, (pos_list[i][0] + self.image_size[0], pos_list[i][1])
-            )
-            new_img.paste(
-                self.logo.rotate(180),
-                (pos_list[i][0] + self.image_size[0] * 2 + 5, pos_list[i][1]),
-                mask=self.logo.rotate(180),
-            )
+        # Load the font
+        font_path = "assets/PixeloidMono.ttf"
+        font_size = 40  # Increased font size
+        font = ImageFont.truetype(font_path, font_size)
 
-        return new_img
+        # Create a draw object
+        draw = ImageDraw.Draw(canvas)
+
+        # Set the text color to red
+        text_color = (255, 0, 0)  # RGB for red
+
+        # Calculate the position for the poem
+        text_x = self.canvas_width // 2  # Center horizontally
+        
+        # Calculate text height and position for vertical centering
+        text_lines = poem.split('\n')        
+        text_y = self.image_size[1] + 45
+
+        # Write the poem
+        for line in text_lines:
+            # Get the width of the current line
+            bbox = draw.textbbox((0, 0), line, font=font)
+            line_width = bbox[2] - bbox[0]
+            # Calculate the x-coordinate to center the line
+            line_x = text_x - line_width // 2
+            draw.text((line_x, text_y), line, font=font, fill=text_color)
+            text_y += font_size + 20
+
+        canvas.paste(self.logo, (120, 80), self.logo)
+        canvas.paste(self.logo, (self.canvas_width - self.logo.width - 120, 80), self.logo)
+
+        canvas = canvas.rotate(90, expand=True)  
+
+        return canvas
 
     def normalize_path(self, path):
         return os.path.normpath(path.replace('\\', '/'))
@@ -129,23 +130,20 @@ class ImagePrinter:
             return
 
         composition = self.compose(
-            os.path.join(session_dir, "1.jpg"),
-            os.path.join(session_dir, "2.jpg"),
-            os.path.join(session_dir, "3.jpg"),
-            os.path.join(session_dir, "1_generated.jpg"),
-            os.path.join(session_dir, "2_generated.jpg"),
-            os.path.join(session_dir, "3_generated.jpg"),
+            os.path.join(session_dir, "0_generated.jpg"),
+            os.path.join(session_dir, "poem.txt")
         )
 
         composition_path = os.path.join(session_dir, "composition.jpg")
         composition.save(composition_path)
-        self.print_image(composition_path, self.printer_name)
+        composition.show()
+        #self.print_image(composition_path, self.printer_name)
 
 
 def main():
-    generator = ImagePrinter()
+    generator = ImagePrinter(printer_name="Canon SELPHY CP1300")
 
-    generator.print_session(1718651223)
+    generator.print_session(1728640417)
 
 
 if __name__ == "__main__":

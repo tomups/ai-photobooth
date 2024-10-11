@@ -1,4 +1,5 @@
 import sys
+import time
 from imaginairy.api.generate import imagine, imagine_image_files
 from imaginairy.schema import ImaginePrompt, ControlInput, LazyLoadingImage, MaskMode
 from PIL import Image
@@ -8,7 +9,7 @@ import random
 import threading
 
 
-class ImageGenerator:
+class Painter:
     prompts = [
         {
             "caption": "Robots",
@@ -79,8 +80,7 @@ class ImageGenerator:
             "prompt": "bright, colorful landscape, pop art, inspired by the art of Andy Warhol",
         },
     ]
-
-    already_used_prompts = set()
+    
 
     def __init__(self, warmup=True):
         if warmup:            
@@ -104,15 +104,8 @@ class ImageGenerator:
         prompt = (
             {"caption": forced_prompt, "prompt": forced_prompt}
             if forced_prompt
-            else random.choice(self.prompts)
-        )
-
-        if len(self.already_used_prompts) == len(self.prompts):
-            self.already_used_prompts.clear()
-
-        while prompt["prompt"] in self.already_used_prompts:
-            prompt = random.choice(self.prompts)
-        self.already_used_prompts.add(prompt["prompt"])
+            else random.Random(time.time()).choice(self.prompts)
+        )        
 
         # caption = generate_caption(image)
 
@@ -150,6 +143,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python generate.py <filename> <prompt>")
         sys.exit(1)
-    generator = ImageGenerator(warmup=False)
+    generator = Painter(warmup=False)
 
     generator.generate(sys.argv[1], sys.argv[2] if len(sys.argv) == 3 else None, None)
