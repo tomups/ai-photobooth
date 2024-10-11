@@ -139,8 +139,8 @@ class PhotoBooth:
         self.sidebar_width = (self.screen_width - self.screen_height) / 2
 
     def take_photo(self):
-        self.render_flash_screen()
-        self.sounds["shutter"].play()        
+        self.render_flash_screen()     
+        time.sleep(0.1)
         os.makedirs(f"sessions/{self.session}", exist_ok=True)
         ret, frame = self.cap.read()
         frame = cv2.flip(frame, 1)
@@ -154,8 +154,8 @@ class PhotoBooth:
         frame = cv2.resize(frame, (512, 512))
         cv2.imwrite(f"sessions/{self.session}/{self.current_take}.jpg", frame)
         self.hold_current_camera_frame = True
-        self.generation_progress = 0
-        time.sleep(1)
+        self.generation_progress = 0 
+        time.sleep(0.3)
         self.next_state()
 
     def generate_image(self):
@@ -328,7 +328,10 @@ class PhotoBooth:
         self.render_text_with_outline("i'm printing it for you", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 + 100), alpha=alpha)
 
     def render_flash_screen(self):
-        self.screen.fill((255, 255, 255))        
+        self.screen.fill((255, 255, 255))   
+        self.sounds["shutter"].play()        
+        pygame.display.flip()     
+        
 
     def render_generated(self):        
         elapsed_time = time.time() - self.start_time
