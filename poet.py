@@ -10,7 +10,7 @@ class Poet:
     def load_model(self):
         # load the processor
         self.processor = AutoProcessor.from_pretrained(
-            'cyan2k/molmo-7B-D-bnb-4bit',
+            'ctranslate2-4you/molmo-7B-D-0924-bnb-4bit',
             trust_remote_code=True,
             torch_dtype='auto',
             device_map='auto'
@@ -18,7 +18,7 @@ class Poet:
 
         # load the model
         self.model = AutoModelForCausalLM.from_pretrained(
-            'cyan2k/molmo-7B-D-bnb-4bit',
+            'ctranslate2-4you/molmo-7B-D-0924-bnb-4bit',
             trust_remote_code=True,
             torch_dtype='auto',
             device_map='auto'

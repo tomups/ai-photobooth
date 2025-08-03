@@ -59,10 +59,10 @@ class Painter:
             "caption": "Dragon Ball",
             "prompt": "dressed as Dragon Ball Z characters, in the style of Akira Toriyama",
         },
-        {
-            "caption": "Detective",
-            "prompt": "wearing a stylish suit of a detective, film noir-inspired cityscape",
-        },
+        #{
+        #    "caption": "Detective",
+        #    "prompt": "wearing a stylish suit of a detective, film noir-inspired cityscape",
+        #},
         {
             "caption": "Knight's Tale",
             "prompt": "dressed as a medieval knight, surrounded by Gothic architecture and stained glass windows",
