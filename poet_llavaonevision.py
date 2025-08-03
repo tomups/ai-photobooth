@@ -30,7 +30,7 @@ class Poet:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Write a 4 lines poem about this image. Maximum 6 words per line. It should rhyme."},
+                    {"type": "text", "text": "Write a poem about this image."},
                     {"type": "image"},
                 ],
             },
