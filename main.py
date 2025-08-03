@@ -7,7 +7,7 @@ import math
 import os
 
 from painter import Painter
-from poet import Poet
+from poet_llavaonevision import Poet
 import threading
 
 from printer import ImagePrinter
@@ -169,7 +169,7 @@ class PhotoBooth:
             ),
         ).start()
 
-    def generate_poem(self):
+    def generate_poem(self):        
         threading.Thread(
             target=self.poet.generate,
             args=[
@@ -456,7 +456,7 @@ class PhotoBooth:
             except:
                 pass
                 
-        elif not self.poem:            
+        elif not self.poem:                    
             try:
                 with open(f"sessions/{self.session}/poem.txt", "r") as file:
                     self.poem = file.read().strip()        
