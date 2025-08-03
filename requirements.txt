@@ -349,6 +349,7 @@ tqdm==4.66.5
     #   open-clip-torch
     #   transformers
 pygame-ce==2.5.0
+imaginairy==15.0.0
 transformers==4.45.0
 qwen-vl-utils==0.0.11
     # via imaginAIry (setup.py)
