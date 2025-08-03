@@ -97,9 +97,9 @@ class Painter:
         image = image.crop((left, top, right, bottom))
         image.thumbnail((512, 512))
         control_mode_depth = ControlInput(mode="depth", image=image, strength=0.5)
-        control_mode_openpose = ControlInput(mode="openpose", image=image, strength=0.2)
-        control_mode_canny = ControlInput(mode="canny", image=image, strength=0.2)
-        control_mode_edit = ControlInput(mode="edit", image=image, strength=0.5)
+        #control_mode_openpose = ControlInput(mode="openpose", image=image, strength=0.2)
+        #control_mode_canny = ControlInput(mode="canny", image=image, strength=0.2)
+        #control_mode_edit = ControlInput(mode="edit", image=image, strength=0.5)
 
         prompt = (
             {"caption": forced_prompt, "prompt": forced_prompt}
