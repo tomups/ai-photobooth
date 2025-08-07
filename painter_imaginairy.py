@@ -10,79 +10,8 @@ import threading
 
 
 class Painter:
-    prompts = [
-        {
-            "caption": "Robots",
-            "prompt": "androids and robots, futuristic cyberpunk style",
-        },
-        {
-            "caption": "Knitted",
-            "prompt": "made out of crochet, knitted",
-        },
-        {
-            "caption": "Van Gogh",
-            "prompt": "in the style of Van Gogh, surrounded by swirling clouds and stars",
-        },
-        {
-            "caption": "Neon Dreams",
-            "prompt": "futuristic astronauts in a neon-lit cityscape, inspired by Syd Mead",
-        },
-        {
-            "caption": "Steampunk",
-            "prompt": "Victorian-era, in the style of steampunk",
-        },
-        {
-            "caption": "Wave Rider",
-            "prompt": "riding a giant wave, inspired by Hokusai's ukiyo-e woodblock prints",
-        },
-        {
-            "caption": "Cyberpunk",
-            "prompt": "cyberpunk-inspired hacker, surrounded by screens and wires, in the style of Blade Runner",
-        },
-        {
-            "caption": "Renaissance Revival",
-            "prompt": "dressed as a Renaissance-era noble, surrounded by ornate gold frames and velvet drapes",
-        },
-        {
-            "caption": "Lab Life",
-            "prompt": "futuristic, high-tech laboratory, inspired by the art of Syd Mead",
-        },
-        {
-            "caption": "Dali's Dream",
-            "prompt": "surreal, dreamlike landscape, inspired by the art of Salvador Dali",
-        },
-        {
-            "caption": "Superhero",
-            "prompt": "superhero, in the style of a superman comic book",
-        },
-        {
-            "caption": "Dragon Ball",
-            "prompt": "dressed as Dragon Ball Z characters, in the style of Akira Toriyama",
-        },
-        #{
-        #    "caption": "Detective",
-        #    "prompt": "wearing a stylish suit of a detective, film noir-inspired cityscape",
-        #},
-        {
-            "caption": "Knight's Tale",
-            "prompt": "dressed as a medieval knight, surrounded by Gothic architecture and stained glass windows",
-        },
-        {
-            "caption": "Retro Futurism",
-            "prompt": "futuristic, space-age landscape, inspired by the art of retro-futurism",
-        },
-        {
-            "caption": "Greek Gods",
-            "prompt": "dressed as a ancient Greek god, surrounded by marble columns and statues",
-        },
-        {
-            "caption": "Pop Art",
-            "prompt": "bright, colorful landscape, pop art, inspired by the art of Andy Warhol",
-        },
-    ]
-    
-
-    def __init__(self, warmup=True):
+    def __init__(self, prompts, warmup=True):
+        self.prompts = prompts
         if warmup:            
             self.generate("logo.png", "AI Tinkerers")
 
@@ -143,6 +72,18 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python generate.py <filename> <prompt>")
         sys.exit(1)
-    generator = Painter(warmup=False)
-
+    
+    # Default prompts for standalone usage
+    default_prompts = [
+        {
+            "caption": "Robots",
+            "prompt": "androids and robots, futuristic cyberpunk style",
+        },
+        {
+            "caption": "Van Gogh",
+            "prompt": "in the style of Van Gogh, surrounded by swirling clouds and stars",
+        },
+    ]
+    
+    generator = Painter(prompts=default_prompts, warmup=False)
     generator.generate(sys.argv[1], sys.argv[2] if len(sys.argv) == 3 else None, None)

@@ -5,3 +5,5 @@ capture.*
 output.*
 /final
 venv
+weights
+.venv
