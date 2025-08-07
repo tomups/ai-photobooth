@@ -45,7 +45,6 @@ class Painter:
         original_image = load_image(filename)
 
         def callback_wrapper(pipe, step_index, timestep, callback_kwargs):
-            print(step_index, timestep)
             if callback:
                 callback()
             return callback_kwargs
