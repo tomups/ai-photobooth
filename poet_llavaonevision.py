@@ -18,7 +18,7 @@ class Poet:
         ).to(0)
 
         # load the processor
-        self.processor = AutoProcessor.from_pretrained(model_id)
+        self.processor = AutoProcessor.from_pretrained(model_id, use_fast=True)
 
     def generate(self, image_path):
         if not self.processor or not self.model:

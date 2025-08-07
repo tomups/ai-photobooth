@@ -151,7 +151,7 @@ class PhotoBooth:
 
         pygame.display.flip()
 
-        self.painter = Painter(prompts=PROMPTS, warmup=True)
+        self.painter = Painter(prompts=PROMPTS, warmup=False)
         self.poet = Poet()
         self.poet.load_model()
         self.font.size = 40
@@ -232,6 +232,7 @@ class PhotoBooth:
 
     def generate_image(self):
         self.generation_progress = 0
+        self.block_interaction = True
         threading.Thread(
             target=self.painter.generate,
             args=(
@@ -405,7 +406,8 @@ class PhotoBooth:
         pygame.display.flip()     
         
 
-    def render_generated(self):        
+    def render_generated(self):    
+        self.block_interaction = False    
         elapsed_time = time.time() - self.start_time
         if elapsed_time <= 2:
             alpha = int(255 * elapsed_time / 2)
@@ -458,16 +460,17 @@ class PhotoBooth:
         self.screen.blit(scaled_static, (0, 0))
 
     def render_logo(self):
-        # Calculate the scale factor to fit the logo vertically
-        scale_factor = self.screen_height / self.logo.get_height()
+        # Calculate the scale factor to fit the logo to the sidebar width
+        scale_factor = self.sidebar_width / self.logo.get_width()
         
-        # Calculate the new width while maintaining aspect ratio
+        # Calculate the new dimensions while maintaining aspect ratio
         new_width = int(self.logo.get_width() * scale_factor)
+        new_height = int(self.logo.get_height() * scale_factor)
         
         # Scale the logo
         scaled_logo = pygame.transform.smoothscale(
             self.logo,
-            (new_width, self.screen_height)
+            (new_width, new_height)
         )
         
         # Calculate the alpha value for fading (0-255)
@@ -477,13 +480,16 @@ class PhotoBooth:
         faded_logo = scaled_logo.copy()
         faded_logo.set_alpha(fade_alpha)
         
-        # Calculate the x-position to center the logo in the sidebar
-        x_pos_left = max(0, (self.sidebar_width - new_width) // 2)
-        x_pos_right = self.sidebar_width + self.screen_height + max(0, (self.sidebar_width - new_width) // 2)
+        # Calculate the y-position to center the logo vertically in the sidebar
+        y_pos = (self.screen_height - new_height) // 2
+        
+        # Calculate the x-positions for both sidebars
+        x_pos_left = 0  # Left sidebar starts at x=0
+        x_pos_right = self.sidebar_width + self.screen_height  # Right sidebar starts after left sidebar + main screen
         
         # Blit the faded logo on both sidebars
-        self.screen.blit(faded_logo, (x_pos_left, 0))
-        self.screen.blit(faded_logo, (x_pos_right, 0))    
+        self.screen.blit(faded_logo, (x_pos_left, y_pos))
+        self.screen.blit(faded_logo, (x_pos_right, y_pos))    
 
     def render_generating(self):
         # Draw progress bar border
@@ -505,17 +511,21 @@ class PhotoBooth:
             (
                 self.screen_width / 2 - (self.screen_width / 2) / 2,
                 self.screen_height / 2 + 20,
-                (self.generation_progress / 59) * (self.screen_width / 2),
+                (self.generation_progress / 20) * (self.screen_width / 2),
                 40,
             ),
         )
         # Draw "Generating..." text
         self.font.size = 60
         position = (self.screen_width / 2, self.screen_height / 2 - 40)
+        alpha = int((math.sin(time.time() * 2) + 1) * 127.5 + 127.5) 
         
-        alpha = int((math.sin(time.time() * 2) + 1) * 127.5 + 127.5)  
+         
         self.render_text_with_outline("let me paint you", self.font, self.main_font_color, position, alpha)
-
+        
+        self.font.size = 30
+        position = (self.screen_width / 2, self.screen_height / 2 + 100)
+        self.render_text_with_outline("(please be patient, i'm GPU poor)", self.font, self.main_font_color, position, alpha)
         if not self.generated_image:            
             try:
                 self.generated_image = pygame.image.load(
