@@ -129,7 +129,7 @@ class PhotoBooth:
         self.camera_frame = None
         self.session = int(time.time())
         self.current_take = 0
-        self.generation_progress = 30        
+        self.generation_progress = 0       
         
         self.printer = ImagePrinter(
             printer_name="Microsoft Print to PDF"  # "Canon SELPHY CP1300"
@@ -140,7 +140,8 @@ class PhotoBooth:
             "print": pygame.mixer.Sound("sounds/print.mp3"),
             "blip": pygame.mixer.Sound("sounds/blip.mp3"),
         }
-        self.logo = pygame.image.load("sidebarlogo.png")                  
+        self.left_logo = pygame.image.load("whymuselogo.png")                  
+        self.right_logo = pygame.image.load("why2025logo.png")                  
 
         # Create a surface for the "Warming up" message
         self.warmup_surface = pygame.Surface((self.screen_width, self.screen_height))
@@ -153,7 +154,6 @@ class PhotoBooth:
 
         self.painter = Painter(prompts=PROMPTS, warmup=False)
         self.poet = Poet()
-        self.poet.load_model()
         self.font.size = 40
 
     def next_state(self):
@@ -394,7 +394,7 @@ class PhotoBooth:
             (((self.screen_width - self.screen_height) / 2), 0),
         )        
         
-        self.font.size = 60
+        self.font.size = 55
         self.render_text_with_outline("THANK YOU, MY MUSE", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2), alpha=alpha)
 
         self.font.size = 40
@@ -459,26 +459,35 @@ class PhotoBooth:
         # Blit the scaled static surface onto the screen
         self.screen.blit(scaled_static, (0, 0))
 
-    def render_logo(self):
+    def render_logos(self):
         # Calculate the scale factor to fit the logo to the sidebar width
-        scale_factor = self.sidebar_width / self.logo.get_width()
+        scale_factor = self.sidebar_width / self.left_logo.get_width()
         
         # Calculate the new dimensions while maintaining aspect ratio
-        new_width = int(self.logo.get_width() * scale_factor)
-        new_height = int(self.logo.get_height() * scale_factor)
+        new_width = int(self.left_logo.get_width() * scale_factor)
+        new_height = int(self.left_logo.get_height() * scale_factor)
         
-        # Scale the logo
-        scaled_logo = pygame.transform.smoothscale(
-            self.logo,
+        # Scale the left logo
+        scaled_left_logo = pygame.transform.smoothscale(
+            self.left_logo,
+            (new_width, new_height)
+        )
+        
+        # Scale the right logo (using same scale factor for consistency)
+        scaled_right_logo = pygame.transform.smoothscale(
+            self.right_logo,
             (new_width, new_height)
         )
         
         # Calculate the alpha value for fading (0-255)
         fade_alpha = int((math.sin(time.time() * 1) + 1) * 80) + 40
         
-        # Create a copy of the scaled logo with the fading alpha
-        faded_logo = scaled_logo.copy()
-        faded_logo.set_alpha(fade_alpha)
+        # Create copies of the scaled logos with the fading alpha
+        faded_left_logo = scaled_left_logo.copy()
+        faded_left_logo.set_alpha(fade_alpha)
+        
+        faded_right_logo = scaled_right_logo.copy()
+        faded_right_logo.set_alpha(fade_alpha)
         
         # Calculate the y-position to center the logo vertically in the sidebar
         y_pos = (self.screen_height - new_height) // 2
@@ -487,9 +496,9 @@ class PhotoBooth:
         x_pos_left = 0  # Left sidebar starts at x=0
         x_pos_right = self.sidebar_width + self.screen_height  # Right sidebar starts after left sidebar + main screen
         
-        # Blit the faded logo on both sidebars
-        self.screen.blit(faded_logo, (x_pos_left, y_pos))
-        self.screen.blit(faded_logo, (x_pos_right, y_pos))    
+        # Blit the faded logos on their respective sidebars
+        self.screen.blit(faded_left_logo, (x_pos_left, y_pos))
+        self.screen.blit(faded_right_logo, (x_pos_right, y_pos))    
 
     def render_generating(self):
         # Draw progress bar border
@@ -511,7 +520,7 @@ class PhotoBooth:
             (
                 self.screen_width / 2 - (self.screen_width / 2) / 2,
                 self.screen_height / 2 + 20,
-                (self.generation_progress / 20) * (self.screen_width / 2),
+                (self.generation_progress / 30) * (self.screen_width / 2),
                 40,
             ),
         )
@@ -534,7 +543,8 @@ class PhotoBooth:
                 self.generated_image = pygame.transform.smoothscale(
                     self.generated_image, (self.screen_height, self.screen_height)
                 )      
-                self.generate_poem()                    
+                self.generate_poem()   
+                self.generation_progress = 25                 
             except:
                 pass
                 
@@ -542,7 +552,8 @@ class PhotoBooth:
             try:
                 with open(f"sessions/{self.session}/poem.txt", "r") as file:
                     self.poem = file.read().strip()        
-                self.start_time = time.time()        
+                self.start_time = time.time()
+                self.generation_progress = 30     
             except:
                 pass
         else:
@@ -592,7 +603,7 @@ class PhotoBooth:
             if self.state == "print":
                 self.render_printer_message()                      
                                               
-            self.render_logo()            
+            self.render_logos()            
             self.render_static_overlay()             
             
 

@@ -77,11 +77,11 @@ class Painter:
             for box in face_boxes:
                 x1, y1, x2, y2 = box.cpu().numpy()
                 
-                # Expand bounding box by 20%
+                # Expand bounding box
                 width = x2 - x1
                 height = y2 - y1
                 expand_w = width * 0.2
-                expand_h = height * 0.2
+                expand_h = height * 0.3
                 
                 # Calculate expanded coordinates (clamped to image bounds)
                 x1_expanded = max(0, x1 - expand_w / 2)

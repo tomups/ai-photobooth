@@ -5,8 +5,7 @@ import os
 
 class Poet:
     def __init__(self):
-        self.processor = None
-        self.model = None
+        self.load_model()
 
     def load_model(self):
         # load the model

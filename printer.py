@@ -12,9 +12,43 @@ class ImagePrinter:
         self.canvas_width = 1748
         self.canvas_height = 1181
         self.image_size = (870, 870)        
-        self.logo = Image.open("sidebarlogo.png")
+        self.left_logo = Image.open("whymuselogo.png")
+        self.right_logo = Image.open("why2025logo.png")
         self.printer_name = printer_name
         
+        # Calculate sidebar width based on leftover space from main image
+        self.sidebar_width = (self.canvas_width - self.image_size[0]) // 2
+        
+    def scale_and_position_logos(self, canvas):
+        """Scale and position logos in sidebars following main.py logic"""
+        # Calculate the scale factor to fit the logo to the sidebar width
+        scale_factor = self.sidebar_width / self.left_logo.width
+        
+        # Calculate the new dimensions while maintaining aspect ratio
+        new_width = int(self.left_logo.width * scale_factor)
+        new_height = int(self.left_logo.height * scale_factor)
+        
+        # Scale both logos
+        scaled_left_logo = self.left_logo.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        scaled_right_logo = self.right_logo.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Calculate the y-position to center the logo vertically
+        y_pos = (self.canvas_height - new_height) // 2
+        
+        # Calculate the x-positions for both sidebars
+        x_pos_left = (self.sidebar_width - new_width) // 2  # Center in left sidebar
+        x_pos_right = self.sidebar_width + self.image_size[0] + (self.sidebar_width - new_width) // 2  # Center in right sidebar
+        
+        # Paste the logos on their respective sidebars
+        if scaled_left_logo.mode == 'RGBA':
+            canvas.paste(scaled_left_logo, (x_pos_left, y_pos), scaled_left_logo)
+        else:
+            canvas.paste(scaled_left_logo, (x_pos_left, y_pos))
+            
+        if scaled_right_logo.mode == 'RGBA':
+            canvas.paste(scaled_right_logo, (x_pos_right, y_pos), scaled_right_logo)
+        else:
+            canvas.paste(scaled_right_logo, (x_pos_right, y_pos))
 
     def compose(self, image_path, poem_path):        
         image_path = self.normalize_path(image_path)
@@ -68,8 +102,8 @@ class ImagePrinter:
             draw.text((line_x, text_y), line, font=font, fill=text_color)
             text_y += font_size + 20
 
-        canvas.paste(self.logo, (120, 80), self.logo)
-        canvas.paste(self.logo, (self.canvas_width - self.logo.width - 120, 80), self.logo)
+        # Add scaled logos to sidebars
+        self.scale_and_position_logos(canvas)
 
         canvas = canvas.rotate(90, expand=True)  
 
@@ -143,7 +177,7 @@ class ImagePrinter:
 def main():
     generator = ImagePrinter(printer_name="Canon SELPHY CP1300")
 
-    generator.print_session(1728640417)
+    generator.print_session(1754539471)
 
 
 if __name__ == "__main__":
