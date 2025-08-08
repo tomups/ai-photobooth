@@ -532,9 +532,11 @@ class PhotoBooth:
          
         self.render_text_with_outline("let me paint you", self.font, self.main_font_color, position, alpha)
         
-        self.font.size = 30
+        self.font.size = 25
         position = (self.screen_width / 2, self.screen_height / 2 + 100)
-        self.render_text_with_outline("(please be patient, i'm GPU poor)", self.font, self.main_font_color, position, alpha)
+        self.render_text_with_outline("please be patient, i'm GPU poor", self.font, self.main_font_color, position, alpha)
+        position = (self.screen_width / 2, self.screen_height / 2 + 150)
+        self.render_text_with_outline("and everything runs locally", self.font, self.main_font_color, position, alpha)
         if not self.generated_image:            
             try:
                 self.generated_image = pygame.image.load(
@@ -584,6 +586,7 @@ class PhotoBooth:
             self.handle_events()        
             self.render_camera_frame()        
             self.render_sidebars()
+            self.render_logos()   
             
             if self.state == "waiting":
                 self.render_waiting()
@@ -603,7 +606,7 @@ class PhotoBooth:
             if self.state == "print":
                 self.render_printer_message()                      
                                               
-            self.render_logos()            
+                     
             self.render_static_overlay()             
             
 

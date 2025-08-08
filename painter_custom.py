@@ -101,7 +101,7 @@ class Painter:
                 combined_mask = np.maximum(combined_mask, mask)
             
             # Apply gaussian blur to the final combined mask
-            combined_mask_blurred = cv2.GaussianBlur(combined_mask, (31, 31), 0)
+            combined_mask_blurred = cv2.GaussianBlur(combined_mask, (21, 21), 0)
             
             # Generate image using ControlNet
             generator = torch.manual_seed(1)
