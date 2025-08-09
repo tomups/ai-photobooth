@@ -17,16 +17,23 @@ import random
 
 
 class Painter:
-    def __init__(self, prompts, warmup=True):
+    def __init__(self, prompts):
         self.prompts = prompts
-        
-        # Initialize models
-        self.depth_estimator = pipeline('depth-estimation', model='depth-anything/Depth-Anything-V2-Small-hf', device="cuda", use_fast=True)
-        
-        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-            self.segmenter = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-tiny")
-            self.face_detector = YOLO("weights/yolov11n-face.pt")
+        self.pipe = None
+        self.depth_estimator = None
+        self.segmenter = None
+        self.face_detector = None
+
+    def load_analysis_models(self):
+        self.depth_estimator = pipeline('depth-estimation', model='depth-anything/Depth-Anything-V2-Small-hf', device="cuda", use_fast=True) if not self.depth_estimator else self.depth_estimator
+        self.segmenter = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-tiny") if not self.segmenter else self.segmenter
+        self.face_detector = YOLO("https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov11n-face.pt") if not self.face_detector else self.face_detector
             
+        
+    def load_model(self, warmup=False):
+        self.load_analysis_models()
+        
+        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.float16):            
             checkpoint = "lllyasviel/control_v11f1p_sd15_depth"
             controlnet = ControlNetModel.from_pretrained(checkpoint, torch_dtype=torch.float16)
             self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
@@ -35,12 +42,26 @@ class Painter:
                 requires_safety_checker = False
             )
             self.pipe.scheduler = UniPCMultistepScheduler.from_config(self.pipe.scheduler.config)
-            self.pipe.enable_model_cpu_offload()
+            self.pipe.enable_model_cpu_offload()            
+            self.pipe.enable_xformers_memory_efficient_attention()
+            self.pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)           
         
         if warmup:            
             self.generate("logo.png", "AI Tinkerers")
 
+    def unload_analysis_models(self):
+        self.depth_estimator = None
+        self.segmenter = None
+        self.face_detector = None
+        torch.cuda.empty_cache()        
+    
+    def unload_model(self):
+        self.unload_analysis_models()
+        self.pipe = None
+        torch.cuda.empty_cache()
+
     def generate(self, filename, forced_prompt=None, callback=None):
+        self.load_analysis_models()
         # Load the original image
         original_image = load_image(filename)
 
@@ -66,7 +87,7 @@ class Painter:
         prompt = prompt_dict["prompt"] + ", high quality, no text"
         print(prompt)
         
-        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.float16):
             # Detect faces
             face_boxes = self.face_detector(original_image)[0].boxes.xyxy
             
@@ -102,10 +123,11 @@ class Painter:
             
             # Apply gaussian blur to the final combined mask
             combined_mask_blurred = cv2.GaussianBlur(combined_mask, (21, 21), 0)
+            self.unload_analysis_models()
             
             # Generate image using ControlNet
             generator = torch.manual_seed(1)
-            generated_image = self.pipe(prompt, num_inference_steps=20, callback_on_step_end=callback_wrapper, generator=generator, image=control_image).images[0]
+            generated_image = self.pipe(prompt, num_inference_steps=10, callback_on_step_end=callback_wrapper, generator=generator, image=control_image).images[0]
         
         # Image combination happens outside autocast context
         # Convert images to numpy arrays for blending
@@ -129,6 +151,8 @@ class Painter:
         final_image = Image.fromarray(combined_image)
         output_filename = filename.split(".")[0] + "_generated." + filename.split(".")[1]
         final_image.save(output_filename)
+
+        #self.unload_model()
         
         return final_image
 

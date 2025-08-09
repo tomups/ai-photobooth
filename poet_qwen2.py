@@ -75,5 +75,5 @@ class Poet:
 if __name__ == "__main__":
     poet = Poet()
     poet.load_model()
-    poem = poet.generate("capture_generated copy 2.jpg")
+    poem = poet.generate("generated.png")
     print(poem)

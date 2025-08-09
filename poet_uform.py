@@ -18,7 +18,7 @@ class Poet:
             raise ValueError("Model not loaded. Call load_model() first.")
 
         # prepare the prompt and image
-        prompt = "[cap] Write a 4 lines poem about this image. Maximum 6 words per line. Make sure it rhymes!"
+        prompt = "[cap] Write a poem about this image."
         image = Image.open(image_path)
 
         # process the inputs
@@ -54,5 +54,5 @@ class Poet:
 if __name__ == "__main__":
     poet = Poet()
     poet.load_model()
-    poem = poet.generate("capture_generated copy 2.jpg")
+    poem = poet.generate("generated.png")
     print(poem)

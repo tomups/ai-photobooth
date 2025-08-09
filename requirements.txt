@@ -5,3 +5,9 @@ numpy
 opencv-python
 diffusers
 pillow
+pygame-ce
+win32printing
+accelerate
+hf_xet
+bitsandbytes 
+flash-attn

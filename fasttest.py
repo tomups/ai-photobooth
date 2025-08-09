@@ -9,7 +9,7 @@ from ultralytics import YOLO
 
 
 # Load the original image first
-original_image = load_image("capture.jpg")
+original_image = load_image("output.png")
 
 # Run depth estimation outside of autocast context to avoid BFloat16 issues
 depth_estimator = pipeline('depth-estimation', model='depth-anything/Depth-Anything-V2-Small-hf', device="cuda", use_fast=True)
@@ -89,9 +89,11 @@ with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
 
     pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)
     pipe.enable_model_cpu_offload()
+    pipe.enable_xformers_memory_efficient_attention()
+    pipe.enable_freeu(b1=1.5, b2=1.6, s1=0.9, s2=0.2)
 
     generator = torch.manual_seed(0)
-    generated_image = pipe(prompt, num_inference_steps=30, generator=generator, image=control_image).images[0]
+    generated_image = pipe(prompt, num_inference_steps=10, generator=generator, image=control_image).images[0]
 
     generated_image.save('generated.png')
 

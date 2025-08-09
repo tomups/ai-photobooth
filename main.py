@@ -111,16 +111,7 @@ class PhotoBooth:
         self.fullscreen = False
         self.screen = pygame.display.set_mode((1280, 720))
         self.screen.fill(self.background_color)
-        pygame.display.set_caption("Muse Machine")
-        self.cap = cv2.VideoCapture(
-            0, cv2.CAP_DSHOW
-        )  # makes it load faster in Windows. Most likely no needed in Mac / Linux?
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Set webcam to 720p
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-        self.webcam_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.webcam_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        pygame.display.set_caption("Muse Machine")        
         self.running = True
         
         self.hold_current_camera_frame = False        
@@ -152,9 +143,25 @@ class PhotoBooth:
 
         pygame.display.flip()
 
-        self.painter = Painter(prompts=PROMPTS, warmup=False)
+        self.painter = Painter(prompts=PROMPTS)
         self.poet = Poet()
         self.font.size = 40
+
+        self.painter.load_model()
+        self.poet.load_model()
+
+        self.init_webcam()
+
+    def init_webcam(self):
+        self.cap = cv2.VideoCapture(
+            0, cv2.CAP_DSHOW
+        )  # makes it load faster in Windows. Most likely no needed in Mac / Linux?
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # Set webcam to 720p
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        self.webcam_width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.webcam_height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
     def next_state(self):
         current_index = self.states.index(self.state)
@@ -164,6 +171,7 @@ class PhotoBooth:
             self.poem = None
             self.generated_image = None
             self.session = int(time.time())
+            self.init_webcam()
         else:
             self.state = self.states[current_index + 1]
         self.start_time = time.time()
@@ -520,7 +528,7 @@ class PhotoBooth:
             (
                 self.screen_width / 2 - (self.screen_width / 2) / 2,
                 self.screen_height / 2 + 20,
-                (self.generation_progress / 30) * (self.screen_width / 2),
+                (self.generation_progress / 20) * (self.screen_width / 2),
                 40,
             ),
         )
@@ -546,7 +554,7 @@ class PhotoBooth:
                     self.generated_image, (self.screen_height, self.screen_height)
                 )      
                 self.generate_poem()   
-                self.generation_progress = 25                 
+                self.generation_progress = 15               
             except:
                 pass
                 
@@ -555,7 +563,7 @@ class PhotoBooth:
                 with open(f"sessions/{self.session}/poem.txt", "r") as file:
                     self.poem = file.read().strip()        
                 self.start_time = time.time()
-                self.generation_progress = 30     
+                self.generation_progress = 20    
             except:
                 pass
         else:
@@ -607,7 +615,7 @@ class PhotoBooth:
                 self.render_printer_message()                      
                                               
                      
-            self.render_static_overlay()             
+            #self.render_static_overlay()             
             
 
             pygame.display.flip()
@@ -617,5 +625,5 @@ class PhotoBooth:
 
 
 if __name__ == "__main__":
-    webcam_feed = PhotoBooth()
-    webcam_feed.run()
+    photobooth = PhotoBooth()
+    photobooth.run()
