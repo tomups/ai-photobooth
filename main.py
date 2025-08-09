@@ -90,6 +90,8 @@ class PhotoBooth:
         pygame.init()
         self.clock = pygame.time.Clock()
 
+        self.do_poem = False
+
         self.states = ["waiting", "pose", "countdown", "photo", "confirmation", "generating", "generated", "print"]
         self.state = self.states[0]
         self.start_time = 0
@@ -144,11 +146,13 @@ class PhotoBooth:
         pygame.display.flip()
 
         self.painter = Painter(prompts=PROMPTS)
-        self.poet = Poet()
+        self.poet = None
         self.font.size = 40
 
         self.painter.load_model()
-        self.poet.load_model()
+        if self.do_poem:
+            self.poet = Poet()
+            self.poet.load_model()
 
         self.init_webcam()
 
@@ -251,6 +255,8 @@ class PhotoBooth:
         ).start()
 
     def generate_poem(self):        
+        if not self.do_poem or not self.poet:
+            return
         threading.Thread(
             target=self.poet.generate,
             args=[
@@ -430,12 +436,14 @@ class PhotoBooth:
 
         self.font.size = 40
 
-        if elapsed_time > 5 and elapsed_time <= 8:
+        if elapsed_time > 5 and (elapsed_time <= 8 or not self.do_poem):
             self.render_text_with_outline("you are a great muse", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 - 60))
             self.render_text_with_outline("you inspired me", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2))
-            self.render_text_with_outline("to write this poem", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 + 60))
+            self.render_text_with_outline("press the button once again", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height - 60))
 
-        if elapsed_time > 8:
+            #self.render_text_with_outline("to write this poem", self.font, self.main_font_color, (self.screen_width // 2, self.screen_height // 2 + 60))
+
+        if elapsed_time > 8 and self.do_poem:
             self.font.size = 35
             lines = self.poem.split('\n')
             for i, line in enumerate(lines):
@@ -528,7 +536,7 @@ class PhotoBooth:
             (
                 self.screen_width / 2 - (self.screen_width / 2) / 2,
                 self.screen_height / 2 + 20,
-                (self.generation_progress / 20) * (self.screen_width / 2),
+                (self.generation_progress / (self.do_poem and 20 or 10)) * (self.screen_width / 2),
                 40,
             ),
         )
@@ -552,13 +560,17 @@ class PhotoBooth:
                 )             
                 self.generated_image = pygame.transform.smoothscale(
                     self.generated_image, (self.screen_height, self.screen_height)
-                )      
-                self.generate_poem()   
-                self.generation_progress = 15               
+                )
+                if self.do_poem:
+                    self.generate_poem()
+                    self.generation_progress = 15
+                else:
+                    self.start_time = time.time()
+                    self.next_state()
             except:
                 pass
                 
-        elif not self.poem:                    
+        elif self.do_poem and not self.poem:                    
             try:
                 with open(f"sessions/{self.session}/poem.txt", "r") as file:
                     self.poem = file.read().strip()        
@@ -566,8 +578,8 @@ class PhotoBooth:
                 self.generation_progress = 20    
             except:
                 pass
-        else:
-            self.next_state()        
+        elif self.do_poem:
+            self.next_state()
 
     def render_sidebars(self):
         pygame.draw.rect(
@@ -615,7 +627,7 @@ class PhotoBooth:
                 self.render_printer_message()                      
                                               
                      
-            #self.render_static_overlay()             
+            self.render_static_overlay()             
             
 
             pygame.display.flip()
