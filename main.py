@@ -10,7 +10,7 @@ from painter_custom import Painter
 from poet_llavaonevision import Poet
 import threading
 
-from printer import ImagePrinter
+from printer_side2side import ImagePrinter
 
 # Art style prompts for image generation
 PROMPTS = [
