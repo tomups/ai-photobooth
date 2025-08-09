@@ -7,17 +7,28 @@ import os
 
 class ImagePrinter:
     def __init__(
-        self, margin_left=80, margin_top=52, image_size=(512, 512), printer_name=None
+        self, margin_left=25, margin_top=13, image_size=(565, 565), printer_name=None
     ):
         self.margin_left = margin_left
         self.margin_top = margin_top
         self.image_size = image_size
-        self.logo = Image.open("sidebarlogo.png")#.rotate(90, expand=True)
+        self.muselogo = Image.open("whymuselogo.png")#.rotate(90, expand=True)
+        self.whylogo = Image.open("why2025logo.png")
         self.printer_name = printer_name
 
-        self.logo = self.logo.resize(
-            (int(image_size[1] * self.logo.width / self.logo.height), image_size[1])
-        )
+        SCALE = 0.1
+
+        new_width = int(self.muselogo.width * SCALE)
+        new_height = int(self.muselogo.height * SCALE)
+        self.muselogo = self.muselogo.resize((new_width, new_height))
+
+       
+        # Scale whylogo to have the same height as muselogo, keeping aspect ratio
+        muselogo_height = self.muselogo.height
+        aspect_ratio = self.whylogo.width / self.whylogo.height
+        new_height = muselogo_height
+        new_width = int(aspect_ratio * new_height)
+        self.whylogo = self.whylogo.resize((new_width, new_height))
 
     def compose(self, orig1, orig2, orig3, gen1, gen2, gen3):
         # Open the images
@@ -56,20 +67,20 @@ class ImagePrinter:
         ]
 
         # Paste the images and logos
-        for i, (orig_img, gen_img) in enumerate(zip(orig_imgs, gen_imgs)):
-            new_img.paste(
-                self.logo,
-                (pos_list[i][0] - self.logo.width - 5, pos_list[i][1]),
-                mask=self.logo,
-            )
+        for i, (orig_img, gen_img) in enumerate(zip(orig_imgs, gen_imgs)):            
             new_img.paste(orig_img, pos_list[i])
             new_img.paste(
                 gen_img, (pos_list[i][0] + self.image_size[0], pos_list[i][1])
             )
             new_img.paste(
-                self.logo,#.rotate(180),
-                (pos_list[i][0] + self.image_size[0] * 2 + 5, pos_list[i][1]),
-                mask=self.logo,#.rotate(180),
+                self.whylogo,
+                (pos_list[i][0]+5, pos_list[i][1]+5),
+                mask=self.whylogo,
+            )
+            new_img.paste(
+                self.muselogo,#.rotate(180),
+                (pos_list[i][0] + self.image_size[0] * 2 - self.whylogo.width - 5, pos_list[i][1] + 5),
+                mask=self.muselogo,#.rotate(180),
             )
 
         return new_img
